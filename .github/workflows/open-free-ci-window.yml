@@ -1,0 +1,40 @@
+name: open-free-ci-window
+
+# Opens the free-CI public window for the org's private repos before their scheduled work fires. We do not pay GitHub for Actions, so once the free minutes run out or a charge goes unpaid, GitHub refuses every private run without starting it, and a refused run cannot flip its own repo public. The pre-push hooks open the window for CI on a push; nothing opened it for a cron, so from 2026-10-25 every hourly push-notification run was refused and users got no reminders.
+#
+# This repo is public and holds no product code, so its own Actions are free and always start. At :50 each hour it flips a private repo public when the org is blocked, the :00 crons then run free, and each repo's enforce-private.yml restores private once its runs finish.
+on:
+  schedule:
+    - cron: "50 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+
+jobs:
+  open:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Flip the private repos public when private Actions are refused
+        env:
+          GH_TOKEN: ${{ secrets.GH_ADMIN_PAT }}
+        run: |
+          if python3 check_private_ci_is_blocked.py; then
+            # Backend alone holds scheduled work; website and ios run only on a push, which pre-push already covers.
+            for repo in backend; do
+              if [ "$(gh repo view "palkietalkie/$repo" --json visibility -q .visibility)" = "PRIVATE" ]; then
+                echo "private Actions are refused; flipping palkietalkie/$repo public for this hour's runs"
+                gh repo edit "palkietalkie/$repo" --visibility public --accept-visibility-change-consequences
+              fi
+            done
+          else
+            echo "private Actions run normally; nothing to open"
+          fi
+
+      # GitHub switches off a public repo's schedules after 60 days with no commits, and this repo is meant to sit untouched, so each run switches its own schedule back on.
+      - name: Keep this schedule enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable open-free-ci-window.yml --repo "${{ github.repository }}"
