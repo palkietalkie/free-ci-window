@@ -1,0 +1,30 @@
+name: run-scheduled-workflows
+
+# The one clock for the org's scheduled work. We do not pay GitHub for Actions, so once the free minutes run out or a charge goes unpaid, GitHub refuses every private run without starting it. A private repo's own cron then fires into that refusal, and a window opened at a fixed minute only helps the runs GitHub happens to start inside it, which it does late and least reliably at the top of the hour. So the private repos carry no `schedule:` at all: each hour this public repo, whose own Actions are free and always start, runs run_scheduled_workflows.py.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # Long enough for the slowest dispatched job; the window closes when they finish, not at this limit.
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Open the window, dispatch what is due, close the window
+        env:
+          GH_TOKEN: ${{ secrets.GH_ADMIN_PAT }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+        run: python3 run_scheduled_workflows.py
+
+      # GitHub switches off a public repo's schedules after 60 days with no commits, and this repo is meant to sit untouched, so each run switches its own schedule back on.
+      - name: Keep this schedule enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable run-scheduled-workflows.yml --repo "${{ github.repository }}"
