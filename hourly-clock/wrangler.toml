@@ -1,0 +1,6 @@
+name = "free-ci-window-hourly-clock"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[triggers]
+crons = ["7 * * * *"]
