@@ -25,9 +25,12 @@ class Schedule:
 SCHEDULES = (
     Schedule(repo="backend", workflow="send-scheduled-push-notifications.yml", utc_hours=EVERY_HOUR),
     Schedule(repo="backend", workflow="refresh-daily-content.yml", utc_hours=(3,)),
-    Schedule(repo="backend", workflow="neo4j-keepalive.yml", utc_hours=(6,)),
+    # Every hour, because this clock lands only about three times a day: a keep-alive due in one hour missed whole days, and Aura pauses a free graph after 72 idle hours (2026-11-20).
+    Schedule(repo="backend", workflow="keep-free-databases-awake.yml", utc_hours=EVERY_HOUR),
     Schedule(repo="backend", workflow="daily-cost-report.yml", utc_hours=(16,)),
     Schedule(repo="backend", workflow="daily-gtm-funnel.yml", utc_hours=(16,)),
+    # Once a day is enough: an event is created weeks before its holiday and goes to review 21 days ahead.
+    Schedule(repo="ios", workflow="schedule-in-app-events.yml", utc_hours=(17,)),
 )
 
 

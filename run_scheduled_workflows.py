@@ -11,6 +11,7 @@ import time
 from datetime import UTC, datetime
 
 from check_private_ci_is_blocked import ORG
+from close_idle_windows import close_idle_windows
 from close_window import close_window
 from find_due_workflows import SCHEDULES, find_due_workflows
 from open_window import open_window
@@ -21,6 +22,9 @@ SECONDS_FOR_A_DISPATCH_TO_APPEAR = 20
 
 
 def main() -> int:
+    # Every hour, before anything is due or not: this clock always runs, while each repo's enforce-private runs only after another of its runs completes.
+    close_idle_windows()
+
     due = find_due_workflows(schedules=SCHEDULES, utc_hour=datetime.now(UTC).hour)
     if not due:
         print("nothing due this hour")
